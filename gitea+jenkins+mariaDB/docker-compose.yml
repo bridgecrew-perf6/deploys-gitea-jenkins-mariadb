@@ -1,0 +1,40 @@
+version: '3'
+services:
+  gitea:
+    image: gitea/gitea:latest
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - DB_TYPE=mysql
+      - DB_HOST=db:3306
+      - DB_NAME=gitea
+      - DB_USER=gitea
+      - DB_PASSWD=changeme
+    volumes:
+      - ./gitea:/data
+    ports:
+      - "3000:3000"
+      - "33:22"
+    depends_on:
+      - db
+    restart: always
+  db:
+    image: mariadb:10
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=changeme
+      - MYSQL_DATABASE=gitea
+      - MYSQL_USER=gitea
+      - MYSQL_PASSWORD=changeme
+    volumes:
+      - ./db/:/var/lib/mysql
+  jenkins:
+      image: jenkins/jenkins:lts
+      user: root
+      ports:
+        - 8080:8080
+      volumes:
+        - ./jenkins:/var/jenkins_home
+        - /var/run/docker.sock:/var/run/docker.sock 
+        - /usr/bin/docker:/usr/local/bin/docker
+      restart: always
