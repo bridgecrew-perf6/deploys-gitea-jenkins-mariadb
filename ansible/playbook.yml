@@ -1,0 +1,123 @@
+
+- hosts: demo
+  tasks:
+
+    - name: Установка докера
+      block: 
+        - name: Install aptitude using apt
+          apt: name=aptitude 
+            state=latest 
+            update_cache=yes 
+            force_apt_get=yes
+        - name: Добовляем universe
+          apt_repository:
+            repo: "deb http://us.archive.ubuntu.com/ubuntu {{ ansible_distribution_release }} universe"
+            state: present
+
+        - name: Установка доп. пакетов
+          apt: 
+            name:
+            - "apt-transport-https"
+            - "ca-certificates"
+            - "curl"
+            - "gnupg-agent"
+            - "software-properties-common"
+            - "python3-pip"
+            - "python3-setuptools"
+            update_cache: yes
+            cache_valid_time: 86400
+
+        - name: Добавление ключа Докер
+          apt_key:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            state: present
+            
+    
+        - name: Установка стабилного репозитория
+          apt_repository:
+            repo: "deb https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+            state: present
+            update_cache: yes
+            filename: docker
+
+        - name: Установка Docker
+          apt: 
+            pkg:
+              - docker-ce 
+              - docker-ce-cli 
+              - containerd.io     
+            state: present
+            update_cache: yes
+
+        - name: Проверка докера
+          service:
+            name: docker
+            state: restarted
+            enabled: yes
+      become: yes
+
+    - name: Установка докер-компосе
+      block: 
+        - name: Получение последней версии docker-compose
+          uri:
+            url: https://api.github.com/repos/docker/compose/releases/latest
+            body_format: json
+          register: page
+          
+        - name: Создание директории
+          file:
+            path: /usr/local/lib/docker/
+            state: directory
+
+        - name: установка docker-compose
+          get_url:
+            url: "https://github.com/docker/compose/releases/download/{{ page.json.tag_name }}/docker-compose-linux-x86_64"
+            dest: /usr/local/lib/docker/cli-plugins
+            mode: 0755     
+
+        - name: Завершение установки
+          block:
+            - name: Добавление пользователя в группу Docker
+              user:
+                name: "{{ansible_user}}"
+                groups: docker
+                append: yes
+            - name: Перезагрузка
+              reboot:
+
+        - name: сreate directory
+          file:
+            path: /home/service/
+            state: directory
+          become: yes
+
+        - name: copy project gitea+jenkins+mariadb
+          ansible.builtin.copy:
+            src: /home/nikolos/Documents/cv/gitea,jenkins.tar.gz
+            dest: /home/service
+
+          become: yes
+
+        - name: unzip archive gitea,jenkins,mariadb
+          ansible.builtin.unarchive:
+            src: /home/service/gitea,jenkins.tar.gz
+            dest: /
+            remote_src: yes
+          become: yes
+
+        
+        - name: install docker-compose
+          apt:
+            name:
+              - docker-compose
+            state: present
+
+        - name: deploy Docker Compose stack
+          community.docker.docker_compose:
+            project_src: /home/service
+            files:
+            - /home/nikolos/Documents/cv/gitea+jenkins+mariadb/docker-compose.yml
+
+
+  become: yes
+  

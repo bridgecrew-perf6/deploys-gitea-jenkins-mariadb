@@ -1,0 +1,6 @@
+[demo]
+
+web ansible_host=35.228.239.23 ansible_user=nikolos 
+server2 ansible_host=127.0.0.1 ansible_user=vagrant ansible_port=2224
+server3 ansible_host=127.0.0.1 ansible_user=vagrant ansible_port=2225
+
